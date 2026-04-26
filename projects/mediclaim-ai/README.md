@@ -32,7 +32,7 @@ PDF Upload → PyMuPDF Extraction → Medical NER Entity Extraction
 |-------|-----------|
 | Backend | FastAPI, Python 3.11 |
 | PDF Parsing | PyMuPDF + Tesseract OCR |
-| NER | Medical entity extraction (regex + HuggingFace) |
+| NER | Medical entity extraction (regex + HuggingFace + Google Gemini) |
 | LLM | Llama3-OpenBioLLM-70B via HuggingFace Inference API |
 | Enrichment | OpenFDA, RxNorm, NLM Clinical Tables (free, no key) |
 | Benchmarks | CMS Medicare Physician Fee Schedule |
@@ -42,7 +42,7 @@ PDF Upload → PyMuPDF Extraction → Medical NER Entity Extraction
 ## Key Design Decisions
 
 - **LLM for language only** — never for numeric decisions. All overcharge detection and severity classification is pure deterministic Python against CMS benchmarks.
-- **Hybrid NER** — robust regex-based extraction that always works, with optional HuggingFace model enhancement.
+- **Hybrid NER** — robust regex-based extraction that always works, with optional HuggingFace model enhancement and Google Gemini API fallback.
 - **Three free government APIs** — RxNorm (drug normalization), OpenFDA (drug verification + recalls), NLM Clinical Tables (CPT validation). No API keys required.
 - **FHIR R4 output** — valid ExplanationOfBenefit resource that plugs into any hospital system, insurance portal, or government health API.
 
@@ -67,7 +67,7 @@ PDF Upload → PyMuPDF Extraction → Medical NER Entity Extraction
 cd src
 pip install -r requirements.txt
 cp .env.example .env
-# Add your HuggingFace token to .env
+# Add your HuggingFace token and GEMINI_API_KEY to .env
 cd ..
 python -m uvicorn backend.main:app --reload
 

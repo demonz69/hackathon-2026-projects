@@ -6,6 +6,8 @@ Hybrid approach: regex-based extraction (always works) + optional HF API enhance
 import re
 import logging
 import requests
+import os
+import json
 from typing import List, Optional
 from backend.models.bill import ExtractedEntity, ExtractedBillData, LineItem
 from backend.config import get_settings
@@ -371,6 +373,50 @@ async def enhance_with_hf_ner(text: str, entities: List[ExtractedEntity]) -> Lis
                         confidence=ent.get("score", 0.5),
                     ))
     except Exception as e:
-        logger.warning(f"HF NER enhancement failed: {e}")
+        logger.warning(f"HF NER enhancement failed: {e}. Falling back to Google Gemini...")
+        return await enhance_with_google_ner(text, entities)
+
+    return entities
+
+async def enhance_with_google_ner(text: str, entities: List[ExtractedEntity]) -> List[ExtractedEntity]:
+    """Fallback to Google Gemini API for NER enhancement."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        logger.warning("No GEMINI_API_KEY found for fallback.")
+        return entities
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        prompt = (
+            "Extract medical entities (drugs, procedures, diagnoses) from this text. "
+            "Return ONLY a JSON array of objects with 'word' and 'label' (e.g., MEDICAL, DRUG, CPT). "
+            f"Text:\n{text[:2000]}"
+        )
+        resp = requests.post(
+            url,
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=15
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        raw_output = data["candidates"][0]["content"]["parts"][0]["text"]
+        
+        # simple parsing of JSON from markdown
+        if "```json" in raw_output:
+            raw_output = raw_output.split("```json")[1].split("```")[0]
+        elif "```" in raw_output:
+            raw_output = raw_output.split("```")[1].split("```")[0]
+            
+        results = json.loads(raw_output.strip())
+        if isinstance(results, list):
+            for ent in results:
+                if isinstance(ent, dict) and "word" in ent:
+                    entities.append(ExtractedEntity(
+                        text=ent["word"],
+                        label=ent.get("label", "MEDICAL"),
+                        confidence=0.9,
+                    ))
+    except Exception as e:
+        logger.warning(f"Google Gemini NER fallback failed: {e}")
 
     return entities

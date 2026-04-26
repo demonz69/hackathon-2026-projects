@@ -3,13 +3,13 @@
 ## Model Choices & Rationale
 
 - **Llama3-OpenBioLLM-70B**: Medical-domain fine-tuned LLM that reduces hallucination of clinical terminology compared to general-purpose models.
-- **Medical NER (regex + HuggingFace)**: Deterministic entity extraction used where LLM guessing is unacceptable — CPT codes, dollar amounts, and drug names are extracted with pattern matching, not generative AI.
+- **Medical NER (regex + HuggingFace + Google Gemini)**: Deterministic entity extraction used where LLM guessing is unacceptable — CPT codes, dollar amounts, and drug names are extracted with pattern matching, not generative AI.
 - **LLMs used ONLY for explanation and reasoning**, never for numeric decisions. All overcharge calculations, severity ratings, and benchmark comparisons are pure deterministic Python.
 
 ## Data Sources
 
 - **CMS Medicare Fee Schedule**: Public US government data, freely available, used as pricing benchmarks.
-- **No real patient data stored**: Bills are processed in memory and immediately discarded. No PHI is persisted to disk or transmitted to third parties beyond the HuggingFace Inference API.
+- **No real patient data stored**: Bills are processed in memory and immediately discarded. No PHI is persisted to disk or transmitted to third parties beyond the HuggingFace/Google inference APIs.
 - **Synthea used for testing**: All demo data is synthetic by design, containing zero Protected Health Information.
 
 ## Bias Considerations
@@ -26,7 +26,7 @@
 | Bad OCR on scanned bills | Always show raw extracted text alongside AI output so users can verify |
 | Hallucinated CPT codes | Cross-validated against NLM Clinical Tables API and CMS benchmark database |
 | Overconfident coverage estimates | Labeled "estimated — verify with your insurer" on every output |
-| HuggingFace API unavailable | Template-based analysis fallback that always works |
+| HuggingFace API unavailable | Fallback to Google Gemini API or template-based analysis |
 | Unrecognized charges | Flagged as HIGH severity with recommendation to request itemized explanation |
 
 ## What This Is NOT
@@ -43,7 +43,7 @@
 
 - No user data is stored persistently
 - PDF files are processed in-memory and discarded after analysis
-- HuggingFace API calls use HTTPS and transmit only anonymized medical text
+- External API calls (HuggingFace, Google) use HTTPS and transmit only anonymized medical text
 - No analytics or tracking is implemented
 - The application can be run fully locally with model fallbacks
 
