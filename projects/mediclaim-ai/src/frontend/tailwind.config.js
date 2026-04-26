@@ -20,6 +20,16 @@ export default {
         mono: ['"DM Mono"', 'monospace'],
         serif: ['"Lora"', 'serif'],
       },
+      animation: {
+        ecg: 'ecg-scroll 3s linear infinite',
+        spinner: 'spin 1s linear infinite',
+      },
+      keyframes: {
+        'ecg-scroll': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
     },
   },
   plugins: [],

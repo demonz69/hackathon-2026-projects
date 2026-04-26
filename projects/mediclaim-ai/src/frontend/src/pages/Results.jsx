@@ -27,6 +27,10 @@ export default function Results() {
   }
 
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
     getInsuranceProviders().then(setProviders).catch(() => {})
   }, [])
 

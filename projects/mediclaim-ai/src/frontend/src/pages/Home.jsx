@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BillUploader from '../components/BillUploader'
 import InsuranceSelector from '../components/InsuranceSelector'
+import LoadingPage from '../components/LoadingPage'
 import { analyzeBill, getInsuranceProviders, downloadDemoBill } from '../api/client'
 
 export default function Home() {
@@ -12,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
+  const analysisResult = useRef(null)
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -28,14 +30,37 @@ export default function Home() {
     if (!file) return
     setLoading(true)
     setError(null)
+    analysisResult.current = null
+    
     try {
-      const result = await analyzeBill(file, provider)
-      navigate('/results', { state: { result, provider } })
+      // Start the API call in the background
+      analyzeBill(file, provider)
+        .then(res => { analysisResult.current = res })
+        .catch(err => {
+          const msg = err.response?.data?.detail || err.message || 'Analysis failed'
+          setError(msg)
+          setLoading(false)
+        })
     } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Analysis failed'
-      setError(msg)
-    } finally {
       setLoading(false)
+    }
+  }
+
+  const onLoadingComplete = () => {
+    // Navigate when animation is done, assuming API is also done
+    if (analysisResult.current) {
+      navigate('/results', { state: { result: analysisResult.current, provider } })
+    } else if (!error) {
+      // If API takes longer than 5.1s, wait for it
+      const checkInterval = setInterval(() => {
+        if (analysisResult.current) {
+          clearInterval(checkInterval)
+          navigate('/results', { state: { result: analysisResult.current, provider } })
+        } else if (error) {
+          clearInterval(checkInterval)
+          setLoading(false)
+        }
+      }, 500)
     }
   }
 
@@ -52,6 +77,10 @@ export default function Home() {
       console.error("Failed to download demo:", err)
       showToast("Failed to download demo bill. Is the Python backend running?")
     }
+  }
+
+  if (loading && !error) {
+    return <LoadingPage onComplete={onLoadingComplete} />
   }
 
   return (
